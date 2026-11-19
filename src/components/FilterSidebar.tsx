@@ -5,6 +5,7 @@ import {
   FilterState,
   FundingScheme,
   QualificationLevel,
+  SkillsCategory,
   TrainingMode,
 } from '../types/course';
 
@@ -25,6 +26,13 @@ const COURSE_AREAS: CourseArea[] = [
   'Business & Finance',
   'Food Safety & Hospitality',
   'Healthcare & Care Economy',
+  'Lifestyle & Enrichment',
+];
+
+const SKILLS_CATEGORIES: { label: string; value: SkillsCategory | 'all' }[] = [
+  { label: 'All (Work & Hobbies)', value: 'all' },
+  { label: 'Work & Career', value: 'Work & Career' },
+  { label: 'Hobbies & Personal', value: 'Hobbies & Personal' },
 ];
 
 const FUNDING_SCHEMES: FundingScheme[] = [
@@ -110,6 +118,32 @@ export function FilterSidebar({
           </span>
         </label>
       </div>
+
+      {/* Skills Category (Work or Hobbies) */}
+      <fieldset className="pb-5 border-b border-slate-200">
+        <legend className="text-xs font-semibold text-slate-900 mb-2.5">
+          Skills Category
+        </legend>
+        <div className="space-y-2">
+          {SKILLS_CATEGORIES.map((cat) => (
+            <label
+              key={cat.value}
+              className="flex items-center gap-2.5 text-xs text-slate-700 cursor-pointer hover:text-slate-900"
+            >
+              <input
+                type="radio"
+                name="skillsCategorySidebar"
+                checked={filters.skillsCategory === cat.value}
+                onChange={() =>
+                  onChange({ ...filters, skillsCategory: cat.value })
+                }
+                className="w-4 h-4 border-slate-300 text-[#C81058] focus:ring-[#C81058]"
+              />
+              <span>{cat.label}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       {/* SkillsFuture Schemes */}
       <fieldset className="pb-5 border-b border-slate-200">

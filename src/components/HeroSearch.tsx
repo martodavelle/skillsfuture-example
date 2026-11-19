@@ -1,65 +1,152 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, X, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  Search,
+  X,
+  Briefcase,
+  Clock,
+  Wallet,
+  ChevronDown,
+  ShieldCheck,
+  Check,
+} from 'lucide-react';
 import {
   HERO_IMAGE_PATH,
   POPULAR_TOPICS,
   SEARCH_SUGGESTIONS,
 } from '../data/courses';
-import { CitizenProfile } from '../types/course';
+import {
+  CitizenProfile,
+  DurationBucket,
+  FilterState,
+  SkillsCategory,
+} from '../types/course';
 
 interface HeroSearchProps {
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
+  filters: FilterState;
+  onFiltersChange: (next: FilterState) => void;
   onSelectPopularTopic: (topic: string) => void;
   citizen: CitizenProfile | null;
   onOpenSingpass: () => void;
   totalCoursesCount: number;
 }
 
+type OpenSegment = 'search' | 'category' | 'duration' | 'cost' | null;
+
+const CATEGORY_OPTIONS: {
+  value: SkillsCategory | 'all';
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'all',
+    label: 'All (Work & Hobbies)',
+    description: 'Browse every SkillsFuture-eligible course',
+  },
+  {
+    value: 'Work & Career',
+    label: 'Work & Career',
+    description: 'WSQ, SCTP, AI, sustainability & professional skills',
+  },
+  {
+    value: 'Hobbies & Personal',
+    label: 'Hobbies & Personal',
+    description: 'Culinary baking, gardening, languages & enrichment',
+  },
+];
+
+const DURATION_OPTIONS: {
+  value: DurationBucket;
+  label: string;
+  sublabel: string;
+}[] = [
+  { value: 'Under 16 hrs', label: 'Under 16 hrs', sublabel: '1–2 day short workshops' },
+  { value: '16 – 40 hrs', label: '16 – 40 hrs', sublabel: 'Multi-day or evening modular' },
+  { value: '40+ hrs', label: '40+ hrs', sublabel: 'Specialist certs & SCTP tracks' },
+];
+
+const COST_OPTIONS: {
+  value: number | null;
+  label: string;
+  sublabel: string;
+}[] = [
+  { value: null, label: 'Any cost', sublabel: 'Show all course fee ranges' },
+  { value: 150, label: 'Under $150', sublabel: 'Est. net fee after subsidy' },
+  { value: 300, label: 'Under $300', sublabel: 'Est. net fee after subsidy' },
+  { value: 600, label: 'Under $600', sublabel: 'Est. net fee after subsidy' },
+];
+
 export function HeroSearch({
-  searchQuery,
-  onSearchChange,
+  filters,
+  onFiltersChange,
   onSelectPopularTopic,
   citizen,
   onOpenSingpass,
   totalCoursesCount,
 }: HeroSearchProps) {
-  const [focused, setFocused] = useState(false);
+  const [openSegment, setOpenSegment] = useState<OpenSegment>(null);
   const [heroImgError, setHeroImgError] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setFocused(false);
+      if (barRef.current && !barRef.current.contains(e.target as Node)) {
+        setOpenSegment(null);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setOpenSegment(null);
       }
     }
     document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const filteredSuggestions = SEARCH_SUGGESTIONS.filter((item) => {
-    if (!searchQuery.trim()) return true;
-    return item.toLowerCase().includes(searchQuery.trim().toLowerCase());
+    if (!filters.searchQuery.trim()) return true;
+    return item.toLowerCase().includes(filters.searchQuery.trim().toLowerCase());
   }).slice(0, 6);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFocused(false);
+    setOpenSegment(null);
     const resultsEl = document.getElementById('course-directory-results');
     if (resultsEl) {
       resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
+  const categorySummary =
+    filters.skillsCategory === 'all'
+      ? 'Work & Hobbies'
+      : filters.skillsCategory;
+
+  const durationSummary =
+    filters.durationBuckets.length === 0
+      ? 'Any duration'
+      : filters.durationBuckets.length === 1
+      ? filters.durationBuckets[0]
+      : `${filters.durationBuckets.length} durations`;
+
+  const costSummary =
+    filters.maxNetFee === null ? 'Any cost' : `Under $${filters.maxNetFee}`;
+
+  const toggleDuration = (bucket: DurationBucket) => {
+    const next = filters.durationBuckets.includes(bucket)
+      ? filters.durationBuckets.filter((b) => b !== bucket)
+      : [...filters.durationBuckets, bucket];
+    onFiltersChange({ ...filters, durationBuckets: next });
+  };
+
   return (
     <section className="bg-[#1B2B5A] text-white border-b border-slate-800">
-      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-10 lg:pt-12 lg:pb-12">
+        {/* Top Split: Headline + Editorial Image */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-stretch">
-          {/* Left Column: Search & Discovery Focal Anchor */}
           <div className="lg:col-span-7 flex flex-col justify-center">
             <p className="text-xs font-medium text-rose-200 tracking-wide mb-3">
               SkillsFuture Singapore · Official Course Directory
@@ -67,87 +154,11 @@ export function HeroSearch({
             <h1 className="font-display text-3xl sm:text-4xl lg:text-[42px] font-bold tracking-tight leading-[1.15] text-white text-balance mb-4">
               Find the right course for your next career move
             </h1>
-            <p className="text-base text-slate-200 leading-relaxed max-w-2xl mb-6">
+            <p className="text-base text-slate-200 leading-relaxed max-w-2xl mb-5">
               Search {totalCoursesCount} SkillsFuture Credit-eligible courses across
               Singapore&apos;s autonomous universities, polytechnics, and appointed
               training providers.
             </p>
-
-            {/* Search Bar with Autocomplete */}
-            <div ref={containerRef} className="relative max-w-2xl mb-5">
-              <form
-                onSubmit={handleSubmit}
-                className="flex flex-col sm:flex-row gap-2.5 bg-white p-1.5 rounded-xl shadow-lg"
-              >
-                <div className="relative flex-1 flex items-center">
-                  <Search
-                    className="w-5 h-5 text-slate-400 ml-3 shrink-0"
-                    aria-hidden="true"
-                  />
-                  <label htmlFor="directory-search" className="sr-only">
-                    Search courses, skills, training providers, or course code
-                  </label>
-                  <input
-                    id="directory-search"
-                    type="text"
-                    value={searchQuery}
-                    onFocus={() => setFocused(true)}
-                    onChange={(e) => {
-                      onSearchChange(e.target.value);
-                      setFocused(true);
-                    }}
-                    placeholder="Search course title, skill, provider, or TGS code"
-                    className="w-full px-3 py-2.5 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 bg-transparent focus:outline-none"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => onSearchChange('')}
-                      aria-label="Clear search"
-                      className="p-1.5 mr-1 text-slate-400 hover:text-slate-700 rounded-md cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-[#C81058] hover:bg-[#A60D48] text-white text-sm font-semibold rounded-lg transition-colors duration-150 inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  <span>Search courses</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-
-              {focused && filteredSuggestions.length > 0 && (
-                <div
-                  role="listbox"
-                  aria-label="Search suggestions"
-                  className="absolute z-30 left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden text-slate-900"
-                >
-                  <div className="px-3.5 py-2 border-b border-slate-100 text-xs font-medium text-slate-500">
-                    Suggested courses &amp; providers
-                  </div>
-                  <ul className="divide-y divide-slate-100">
-                    {filteredSuggestions.map((suggestion) => (
-                      <li key={suggestion}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onSearchChange(suggestion);
-                            setFocused(false);
-                          }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#1B2B5A] flex items-center gap-2.5 cursor-pointer"
-                        >
-                          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span className="truncate">{suggestion}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
 
             {/* Popular Topics Quick Filter */}
             <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +167,7 @@ export function HeroSearch({
               </span>
               {POPULAR_TOPICS.map((topic) => {
                 const isSelected =
-                  searchQuery.toLowerCase() === topic.toLowerCase();
+                  filters.searchQuery.toLowerCase() === topic.toLowerCase();
                 return (
                   <button
                     key={topic}
@@ -177,9 +188,8 @@ export function HeroSearch({
             </div>
           </div>
 
-          {/* Right Column: Stretched Editorial Photo */}
           <div className="lg:col-span-5 flex">
-            <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/60 bg-[#142045] min-h-[240px] lg:min-h-[300px]">
+            <div className="relative w-full rounded-xl overflow-hidden border border-slate-700/60 bg-[#142045] min-h-[210px] lg:min-h-[240px]">
               {!heroImgError ? (
                 <img
                   src={HERO_IMAGE_PATH}
@@ -200,10 +210,10 @@ export function HeroSearch({
                 </div>
               )}
               <div
-                className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"
+                className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"
                 aria-hidden="true"
               />
-              <div className="absolute bottom-3.5 left-4 right-4 flex items-center justify-between gap-3 text-xs text-white/95">
+              <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between gap-3 text-xs text-white/95">
                 <span className="font-medium">
                   Eligible for SkillsFuture Credit &amp; Level-Up Programme
                 </span>
@@ -215,8 +225,349 @@ export function HeroSearch({
           </div>
         </div>
 
-        {/* Full-Width Citizen Summary / Funding Strip Below Split Hero */}
-        <div className="mt-8 pt-6 border-t border-slate-700/70">
+        {/* Full-Width Multi-Segment Search Bar (Amber-Framed Segmented Bar) */}
+        <div ref={barRef} className="mt-8 relative z-30">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-[#FFB700] p-1 rounded-xl shadow-xl flex flex-col lg:flex-row items-stretch gap-1 text-slate-900"
+          >
+            {/* Segment 1: Keyword Search */}
+            <div className="relative flex-[1.55] min-w-0 bg-white rounded-lg flex items-center px-3.5 py-2 focus-within:ring-2 focus-within:ring-[#006CE4]">
+              <Search
+                className="w-5 h-5 text-slate-500 shrink-0 mr-3"
+                aria-hidden="true"
+              />
+              <div className="flex-1 min-w-0">
+                <label
+                  htmlFor="directory-search"
+                  className="block text-[11px] font-medium text-slate-500 leading-tight"
+                >
+                  Search in your own words
+                </label>
+                <input
+                  id="directory-search"
+                  type="text"
+                  value={filters.searchQuery}
+                  onFocus={() => setOpenSegment('search')}
+                  onChange={(e) => {
+                    onFiltersChange({ ...filters, searchQuery: e.target.value });
+                    setOpenSegment('search');
+                  }}
+                  placeholder="AI, baking, Python, NUS-ISS..."
+                  className="w-full text-sm font-semibold text-slate-900 placeholder:text-slate-400 placeholder:font-normal bg-transparent focus:outline-none truncate"
+                />
+              </div>
+              {filters.searchQuery && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onFiltersChange({ ...filters, searchQuery: '' })
+                  }
+                  aria-label="Clear search"
+                  className="p-1.5 text-slate-500 hover:text-slate-900 rounded-md cursor-pointer shrink-0"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Keyword Autocomplete Popover */}
+              {openSegment === 'search' && filteredSuggestions.length > 0 && (
+                <div
+                  role="listbox"
+                  aria-label="Search suggestions"
+                  className="absolute z-40 left-0 right-0 top-[calc(100%+8px)] bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden text-slate-900"
+                >
+                  <div className="px-3.5 py-2 border-b border-slate-100 text-xs font-medium text-slate-500">
+                    Suggested courses &amp; providers
+                  </div>
+                  <ul className="divide-y divide-slate-100">
+                    {filteredSuggestions.map((suggestion) => (
+                      <li key={suggestion}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onFiltersChange({
+                              ...filters,
+                              searchQuery: suggestion,
+                            });
+                            setOpenSegment(null);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-[#1B2B5A] flex items-center gap-2.5 cursor-pointer"
+                        >
+                          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span className="truncate">{suggestion}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Segment 2: Skills Category (Hobbies or Work) */}
+            <div className="relative flex-1 min-w-0">
+              <button
+                type="button"
+                aria-expanded={openSegment === 'category'}
+                aria-haspopup="listbox"
+                onClick={() =>
+                  setOpenSegment((prev) =>
+                    prev === 'category' ? null : 'category'
+                  )
+                }
+                className={`w-full h-full bg-white hover:bg-slate-50 rounded-lg px-3.5 py-2 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                  openSegment === 'category' ? 'ring-2 ring-[#006CE4]' : ''
+                }`}
+              >
+                <div className="flex items-center min-w-0 gap-3">
+                  <Briefcase
+                    className="w-5 h-5 text-slate-500 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-medium text-slate-500 leading-tight whitespace-nowrap">
+                      Skills category
+                    </span>
+                    <span className="block text-sm font-semibold text-slate-900 truncate">
+                      {categorySummary}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-150 ${
+                    openSegment === 'category' ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {openSegment === 'category' && (
+                <div
+                  role="listbox"
+                  aria-label="Skills category options"
+                  className="absolute z-40 left-0 right-0 lg:w-72 top-[calc(100%+8px)] bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-1"
+                >
+                  {CATEGORY_OPTIONS.map((opt) => {
+                    const selected = filters.skillsCategory === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => {
+                          onFiltersChange({
+                            ...filters,
+                            skillsCategory: opt.value,
+                          });
+                          setOpenSegment(null);
+                        }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg flex items-start justify-between gap-2 transition-colors cursor-pointer ${
+                          selected
+                            ? 'bg-blue-50 text-[#006CE4]'
+                            : 'hover:bg-slate-50 text-slate-800'
+                        }`}
+                      >
+                        <div>
+                          <span className="block text-sm font-semibold">
+                            {opt.label}
+                          </span>
+                          <span className="block text-xs text-slate-500 mt-0.5">
+                            {opt.description}
+                          </span>
+                        </div>
+                        {selected && (
+                          <Check className="w-4 h-4 text-[#006CE4] shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Segment 3: Duration of Course */}
+            <div className="relative flex-1 min-w-0">
+              <button
+                type="button"
+                aria-expanded={openSegment === 'duration'}
+                aria-haspopup="dialog"
+                onClick={() =>
+                  setOpenSegment((prev) =>
+                    prev === 'duration' ? null : 'duration'
+                  )
+                }
+                className={`w-full h-full bg-white hover:bg-slate-50 rounded-lg px-3.5 py-2 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                  openSegment === 'duration' ? 'ring-2 ring-[#006CE4]' : ''
+                }`}
+              >
+                <div className="flex items-center min-w-0 gap-3">
+                  <Clock
+                    className="w-5 h-5 text-slate-500 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-medium text-slate-500 leading-tight whitespace-nowrap">
+                      Duration of course
+                    </span>
+                    <span className="block text-sm font-semibold text-slate-900 tabular-nums truncate">
+                      {durationSummary}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-150 ${
+                    openSegment === 'duration' ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {openSegment === 'duration' && (
+                <div className="absolute z-40 left-0 right-0 lg:w-72 top-[calc(100%+8px)] bg-white border border-slate-200 rounded-xl shadow-2xl p-3 space-y-2">
+                  <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-100">
+                    <span className="text-xs font-semibold text-slate-700">
+                      Select course duration
+                    </span>
+                    {filters.durationBuckets.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onFiltersChange({ ...filters, durationBuckets: [] })
+                        }
+                        className="text-xs font-medium text-[#006CE4] hover:underline cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {DURATION_OPTIONS.map((opt) => {
+                      const checked = filters.durationBuckets.includes(
+                        opt.value
+                      );
+                      return (
+                        <label
+                          key={opt.value}
+                          className={`flex items-start gap-2.5 p-2 rounded-lg cursor-pointer transition-colors ${
+                            checked ? 'bg-blue-50/70' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleDuration(opt.value)}
+                            className="mt-0.5 w-4 h-4 rounded border-slate-300 text-[#006CE4] focus:ring-[#006CE4]"
+                          />
+                          <div>
+                            <span className="block text-sm font-semibold text-slate-900 tabular-nums">
+                              {opt.label}
+                            </span>
+                            <span className="block text-xs text-slate-500">
+                              {opt.sublabel}
+                            </span>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setOpenSegment(null)}
+                    className="w-full py-2 bg-[#006CE4] hover:bg-[#0057B8] text-white text-xs font-semibold rounded-lg cursor-pointer"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Segment 4: Cost of Course */}
+            <div className="relative flex-1 min-w-0">
+              <button
+                type="button"
+                aria-expanded={openSegment === 'cost'}
+                aria-haspopup="listbox"
+                onClick={() =>
+                  setOpenSegment((prev) => (prev === 'cost' ? null : 'cost'))
+                }
+                className={`w-full h-full bg-white hover:bg-slate-50 rounded-lg px-3.5 py-2 flex items-center justify-between gap-2 text-left transition-colors cursor-pointer ${
+                  openSegment === 'cost' ? 'ring-2 ring-[#006CE4]' : ''
+                }`}
+              >
+                <div className="flex items-center min-w-0 gap-3">
+                  <Wallet
+                    className="w-5 h-5 text-slate-500 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-medium text-slate-500 leading-tight whitespace-nowrap">
+                      Cost of course
+                    </span>
+                    <span className="block text-sm font-semibold text-slate-900 tabular-nums truncate">
+                      {costSummary}
+                    </span>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-150 ${
+                    openSegment === 'cost' ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {openSegment === 'cost' && (
+                <div
+                  role="listbox"
+                  aria-label="Cost of course options"
+                  className="absolute z-40 left-0 right-0 lg:right-0 lg:left-auto lg:w-64 top-[calc(100%+8px)] bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-1"
+                >
+                  {COST_OPTIONS.map((opt) => {
+                    const selected = filters.maxNetFee === opt.value;
+                    return (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        role="option"
+                        aria-selected={selected}
+                        onClick={() => {
+                          onFiltersChange({ ...filters, maxNetFee: opt.value });
+                          setOpenSegment(null);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg flex items-start justify-between gap-2 transition-colors cursor-pointer ${
+                          selected
+                            ? 'bg-blue-50 text-[#006CE4]'
+                            : 'hover:bg-slate-50 text-slate-800'
+                        }`}
+                      >
+                        <div>
+                          <span className="block text-sm font-semibold tabular-nums">
+                            {opt.label}
+                          </span>
+                          <span className="block text-xs text-slate-500">
+                            {opt.sublabel}
+                          </span>
+                        </div>
+                        {selected && (
+                          <Check className="w-4 h-4 text-[#006CE4] shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Segment 5: Primary Search CTA */}
+            <button
+              type="submit"
+              className="px-7 py-3 lg:py-0 bg-[#006CE4] hover:bg-[#0057B8] text-white text-base font-semibold rounded-lg transition-colors duration-150 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Search
+            </button>
+          </form>
+        </div>
+
+        {/* Full-Width Citizen Summary / Funding Strip Below Hero */}
+        <div className="mt-7 pt-6 border-t border-slate-700/70">
           {citizen ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-[#142045] border border-slate-700/70 rounded-xl p-4">
               <div>
@@ -244,7 +595,10 @@ export function HeroSearch({
                   Level-Up Mid-Career Credit
                 </p>
                 <p className="text-base font-semibold font-mono tabular-nums text-emerald-300 mt-0.5">
-                  ${citizen.levelUpMidCareerBalance.toLocaleString('en-SG', { minimumFractionDigits: 2 })}
+                  $
+                  {citizen.levelUpMidCareerBalance.toLocaleString('en-SG', {
+                    minimumFractionDigits: 2,
+                  })}
                 </p>
               </div>
               <div className="flex items-center justify-between lg:justify-end gap-3">

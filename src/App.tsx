@@ -61,6 +61,7 @@ export default function App() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.searchQuery.trim()) count += 1;
+    if (filters.skillsCategory !== 'all') count += 1;
     count += filters.areas.length;
     count += filters.schemes.length;
     count += filters.modes.length;
@@ -86,12 +87,19 @@ export default function App() {
           course.providerShort,
           course.referenceCode,
           course.area,
+          course.skillsCategory,
           course.summary,
           ...course.skillsCovered,
         ]
           .join(' ')
           .toLowerCase();
         if (!haystack.includes(q)) return false;
+      }
+      if (
+        filters.skillsCategory !== 'all' &&
+        course.skillsCategory !== filters.skillsCategory
+      ) {
+        return false;
       }
       if (filters.areas.length > 0 && !filters.areas.includes(course.area)) {
         return false;
@@ -219,6 +227,12 @@ export default function App() {
       onRemove: () => setFilters((p) => ({ ...p, searchQuery: '' })),
     });
   }
+  if (filters.skillsCategory !== 'all') {
+    activeFilterTokens.push({
+      label: `Category: ${filters.skillsCategory}`,
+      onRemove: () => setFilters((p) => ({ ...p, skillsCategory: 'all' })),
+    });
+  }
   filters.schemes.forEach((s) =>
     activeFilterTokens.push({
       label: s,
@@ -305,10 +319,8 @@ export default function App() {
         {activeSection === 'directory' && (
           <>
             <HeroSearch
-              searchQuery={filters.searchQuery}
-              onSearchChange={(q) =>
-                setFilters((prev) => ({ ...prev, searchQuery: q }))
-              }
+              filters={filters}
+              onFiltersChange={setFilters}
               onSelectPopularTopic={handleSelectPopularTopic}
               citizen={citizen}
               onOpenSingpass={() => setSingpassOpen(true)}

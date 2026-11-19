@@ -12,13 +12,16 @@ export type FundingScheme =
   | 'Career Transition (SCTP)'
   | 'Workfare Skills Support';
 
+export type SkillsCategory = 'Work & Career' | 'Hobbies & Personal';
+
 export type CourseArea =
   | 'AI & Technology'
   | 'Data & Analytics'
   | 'Sustainability & Green Economy'
   | 'Business & Finance'
   | 'Food Safety & Hospitality'
-  | 'Healthcare & Care Economy';
+  | 'Healthcare & Care Economy'
+  | 'Lifestyle & Enrichment';
 
 export type QualificationLevel =
   | 'No Formal Qualification'
@@ -60,6 +63,7 @@ export interface Course {
   provider: string;
   providerShort: string;
   area: CourseArea;
+  skillsCategory: SkillsCategory;
   mode: TrainingMode;
   durationHours: number;
   durationLabel: string;
@@ -87,6 +91,7 @@ export interface Course {
 
 export interface FilterState {
   searchQuery: string;
+  skillsCategory: SkillsCategory | 'all';
   areas: CourseArea[];
   schemes: FundingScheme[];
   modes: TrainingMode[];
