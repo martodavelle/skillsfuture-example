@@ -1,0 +1,6 @@
+{
+  "name": "MySkillsFuture Course Directory",
+  "description": "Official-style Singapore lifelong learning course directory to discover SkillsFuture Credit-eligible courses, compare government subsidies, and plan career upskilling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
